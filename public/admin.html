@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel | Mahto's Real Estate</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html" class="logo">Mahto<span>'s</span> Real Estate</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="properties.html">Properties</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <button class="nav-toggle">☰</button>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><h2>⚙️ Admin Panel</h2><p>Manage properties, enquiries, users and blog</p></div>
+      <div class="panel">
+        <aside class="panel-side">
+          <a href="#" class="active" data-tab="properties">🏠 Properties</a>
+          <a href="#" data-tab="enquiries">📩 Enquiries</a>
+          <a href="#" data-tab="users">👥 Users</a>
+          <a href="#" data-tab="posts">📝 Blog Posts</a>
+        </aside>
+
+        <main class="panel-main">
+          <!-- PROPERTIES -->
+          <div id="tabProperties">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <h2>Properties</h2>
+              <button class="btn small" id="btnNewProperty">+ Add Property</button>
+            </div>
+            <div id="propList" class="empty">Loading...</div>
+          </div>
+
+          <!-- ENQUIRIES -->
+          <div id="tabEnquiries" style="display:none">
+            <h2 style="margin-bottom:16px">Enquiries</h2>
+            <div id="enqList" class="empty">Loading...</div>
+          </div>
+
+          <!-- USERS -->
+          <div id="tabUsers" style="display:none">
+            <h2 style="margin-bottom:16px">Users</h2>
+            <div id="userList" class="empty">Loading...</div>
+          </div>
+
+          <!-- BLOG -->
+          <div id="tabPosts" style="display:none">
+            <h2 style="margin-bottom:16px">Blog Posts</h2>
+            <form id="postForm" style="margin-bottom:24px">
+              <div id="postAlert"></div>
+              <div class="field"><label>Title</label><input name="title" required></div>
+              <div class="field"><label>Content</label><textarea name="body" rows="4" required></textarea></div>
+              <button class="btn small" type="submit">Publish Post</button>
+            </form>
+            <div id="postList" class="empty">Loading...</div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- Property form modal -->
+  <div id="propModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;overflow:auto;padding:20px">
+    <div class="form-card" style="max-width:720px;margin:40px auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2 id="propModalTitle">Add Property</h2>
+        <button class="btn small ghost" id="closeModal">✕</button>
+      </div>
+      <div id="propAlert"></div>
+      <form id="propForm" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <input type="hidden" name="id">
+        <div class="field" style="grid-column:1/-1"><label>Title *</label><input name="title" required></div>
+        <div class="field"><label>Type</label><select name="type"><option>Residential</option><option>Commercial</option><option>Plot</option></select></div>
+        <div class="field"><label>Status</label><select name="status"><option value="sale">For Sale</option><option value="rent">For Rent</option></select></div>
+        <div class="field"><label>Price (₹) *</label><input name="price" type="number" required></div>
+        <div class="field"><label>Area (sqft)</label><input name="area" type="number"></div>
+        <div class="field"><label>Bedrooms</label><input name="bedrooms" type="number" min="0"></div>
+        <div class="field"><label>Bathrooms</label><input name="bathrooms" type="number" min="0"></div>
+        <div class="field"><label>City *</label><input name="city" required></div>
+        <div class="field"><label>Locality</label><input name="locality"></div>
+        <div class="field" style="grid-column:1/-1"><label>Description</label><textarea name="description" rows="3"></textarea></div>
+        <div class="field" style="grid-column:1/-1"><label>Features (comma separated)</label><input name="features" placeholder="Garden, Parking, Lift"></div>
+        <div class="field" style="grid-column:1/-1"><label>Image URLs (comma separated)</label><input name="images" placeholder="https://...jpg, https://...jpg"></div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="featured" value="1"> Featured</label>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="active" value="1" checked> Active</label>
+        </div>
+        <div style="grid-column:1/-1;text-align:right">
+          <button class="btn" type="submit">Save Property</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const me = App.getCurrentUser();
+    if (!me || !App.getToken() || me.role !== 'admin') { location.href = 'login.html'; }
+
+    // Tabs
+    document.querySelectorAll('.panel-side a').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelectorAll('.panel-side a').forEach(x => x.classList.remove('active'));
+        a.classList.add('active');
+        const tab = a.dataset.tab;
+        ['properties', 'enquiries', 'users', 'posts'].forEach(t => {
+          document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = t === tab ? '' : 'none';
+        });
+        if (tab === 'properties') loadProperties();
+        if (tab === 'enquiries') loadEnquiries();
+        if (tab === 'users') loadUsers();
+        if (tab === 'posts') loadPosts();
+      });
+    });
+
+    /* ---------- PROPERTIES ---------- */
+    function loadProperties() {
+      App.api('/properties?active=0') // fetch all incl. inactive for admin
+        .then(d => {
+          const el = document.getElementById('propList');
+          if (!d.properties.length) { el.className = 'empty'; el.textContent = 'No properties yet.'; return; }
+          el.className = '';
+          el.innerHTML = `<table>
+            <thead><tr><th>Title</th><th>City</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>${d.properties.map(p => `
+              <tr>
+                <td>${p.title}</td>
+                <td>${p.city}</td>
+                <td>${App.formatINR(p.price)}</td>
+                <td><span class="chip ${p.status === 'rent' ? 'rent' : ''}">${p.status}</span></td>
+                <td style="white-space:nowrap">
+                  <button class="btn small ghost" onclick="editProperty(${p.id})">Edit</button>
+                  <button class="btn small ghost" style="color:#fca5a5" onclick="deleteProperty(${p.id})">Delete</button>
+                </td>
+              </tr>`).join('')}</tbody></table>`;
+        })
+        .catch(err => document.getElementById('propList').textContent = err.message);
+    }
+
+    function editProperty(id) {
+      App.api('/properties/' + id).then(d => {
+        const p = d.property;
+        const f = document.getElementById('propForm');
+        let features = [], images = [];
+        try { features = JSON.parse(p.features || '[]'); } catch (e) {}
+        try { images = JSON.parse(p.images || '[]'); } catch (e) {}
+        f.elements.namedItem('id').value = p.id;
+        f.elements.namedItem('title').value = p.title;
+        f.elements.namedItem('type').value = p.type;
+        f.elements.namedItem('status').value = p.status;
+        f.elements.namedItem('price').value = p.price;
+        f.elements.namedItem('area').value = p.area;
+        f.elements.namedItem('bedrooms').value = p.bedrooms;
+        f.elements.namedItem('bathrooms').value = p.bathrooms;
+        f.elements.namedItem('city').value = p.city;
+        f.elements.namedItem('locality').value = p.locality;
+        f.elements.namedItem('description').value = p.description;
+        f.elements.namedItem('features').value = features.join(', ');
+        f.elements.namedItem('images').value = images.join(', ');
+        f.elements.namedItem('featured').checked = !!p.featured;
+        f.elements.namedItem('active').checked = !!p.active;
+        document.getElementById('propModalTitle').textContent = 'Edit Property';
+        document.getElementById('propModal').style.display = 'block';
+      });
+    }
+
+    function deleteProperty(id) {
+      if (!confirm('Delete this property permanently?')) return;
+      App.api('/admin/properties/' + id, { method: 'DELETE' })
+        .then(() => loadProperties())
+        .catch(err => alert(err.message));
+    }
+
+    document.getElementById('btnNewProperty').addEventListener('click', () => {
+      document.getElementById('propForm').reset();
+      document.getElementById('propForm').elements.namedItem('active').checked = true;
+      document.getElementById('propModalTitle').textContent = 'Add Property';
+      document.getElementById('propModal').style.display = 'block';
+    });
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('propModal').style.display = 'none';
+    });
+
+    document.getElementById('propForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const f = e.target;
+      const raw = Object.fromEntries(new FormData(f));
+      const body = {
+        title: raw.title, type: raw.type, status: raw.status,
+        price: raw.price, area: raw.area, bedrooms: raw.bedrooms, bathrooms: raw.bathrooms,
+        city: raw.city, locality: raw.locality, description: raw.description,
+        features: (raw.features || '').split(',').map(s => s.trim()).filter(Boolean),
+        images: (raw.images || '').split(',').map(s => s.trim()).filter(Boolean),
+        featured: !!raw.featured, active: raw.active !== undefined
+      };
+      const id = raw.id;
+      const path = id ? '/admin/properties/' + id : '/admin/properties';
+      const method = id ? 'PUT' : 'POST';
+      App.api(path, { method, body: JSON.stringify(body) })
+        .then(() => {
+          document.getElementById('propModal').style.display = 'none';
+          loadProperties();
+        })
+        .catch(err => App.showAlert(document.getElementById('propAlert'), err.message, 'error'));
+    });
+
+    /* ---------- ENQUIRIES ---------- */
+    function loadEnquiries() {
+      App.api('/admin/enquiries').then(d => {
+        const el = document.getElementById('enqList');
+        if (!d.enquiries.length) { el.className = 'empty'; el.textContent = 'No enquiries yet.'; return; }
+        el.className = '';
+        el.innerHTML = `<table>
+          <thead><tr><th>Name</th><th>Contact</th><th>Property</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${d.enquiries.map(en => `
+            <tr>
+              <td>${en.name}</td>
+              <td>${en.email}<br>${en.phone}</td>
+              <td>${en.property_title || '—'}</td>
+              <td style="max-width:220px">${en.message}</td>
+              <td><span class="chip ${en.status === 'replied' ? 'rent' : ''}">${en.status}</span></td>
+              <td style="white-space:nowrap">
+                <button class="btn small ghost" onclick="setEnqStatus(${en.id},'replied')">Replied</button>
+                <button class="btn small ghost" style="color:#fca5a5" onclick="deleteEnq(${en.id})">Delete</button>
+              </td>
+            </tr>`).join('')}</tbody></table>`;
+      }).catch(err => document.getElementById('enqList').textContent = err.message);
+    }
+    function setEnqStatus(id, status) {
+      App.api('/admin/enquiries/' + id, { method: 'PATCH', body: JSON.stringify({ status }) })
+        .then(() => loadEnquiries());
+    }
+    function deleteEnq(id) {
+      if (!confirm('Delete this enquiry?')) return;
+      App.api('/admin/enquiries/' + id, { method: 'DELETE' }).then(() => loadEnquiries());
+    }
+
+    /* ---------- USERS ---------- */
+    function loadUsers() {
+      App.api('/admin/users').then(d => {
+        const el = document.getElementById('userList');
+        el.className = '';
+        el.innerHTML = `<table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${d.users.map(u => `
+            <tr>
+              <td>${u.name}</td>
+              <td>${u.email}</td>
+              <td><span class="chip ${u.role === 'admin' ? 'rent' : ''}">${u.role}</span></td>
+              <td>${u.blocked ? '<span class="chip" style="color:#fca5a5;background:rgba(239,68,68,0.15)">Blocked</span>' : '<span class="chip rent">Active</span>'}</td>
+              <td style="white-space:nowrap">
+                <button class="btn small ghost" onclick="toggleBlock(${u.id}, ${u.blocked ? 'false' : 'true'})">${u.blocked ? 'Unblock' : 'Block'}</button>
+                ${u.role !== 'admin' ? `<button class="btn small ghost" style="color:#fca5a5" onclick="deleteUser(${u.id})">Delete</button>` : ''}
+              </td>
+            </tr>`).join('')}</tbody></table>`;
+      }).catch(err => document.getElementById('userList').textContent = err.message);
+    }
+    function toggleBlock(id, blocked) {
+      App.api('/admin/users/' + id, { method: 'PATCH', body: JSON.stringify({ blocked }) }).then(() => loadUsers());
+    }
+    function deleteUser(id) {
+      if (!confirm('Delete this user permanently?')) return;
+      App.api('/admin/users/' + id, { method: 'DELETE' }).then(() => loadUsers());
+    }
+
+    /* ---------- BLOG ---------- */
+    function loadPosts() {
+      App.api('/blog').then(d => {
+        const el = document.getElementById('postList');
+        if (!d.posts.length) { el.className = 'empty'; el.textContent = 'No posts yet.'; return; }
+        el.className = '';
+        el.innerHTML = d.posts.map(p => `<div style="padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:10px">
+          <strong>${p.title}</strong>
+          <p class="compact" style="margin:4px 0 0">${p.body.slice(0, 120)}...</p>
+          <span class="compact">${p.created_at}</span>
+        </div>`).join('');
+      }).catch(err => document.getElementById('postList').textContent = err.message);
+    }
+    document.getElementById('postForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target));
+      App.api('/admin/posts', { method: 'POST', body: JSON.stringify(body) })
+        .then(() => { e.target.reset(); App.showAlert(document.getElementById('postAlert'), 'Post published!', 'ok'); loadPosts(); })
+        .catch(err => App.showAlert(document.getElementById('postAlert'), err.message, 'error'));
+    });
+
+    loadProperties();
+  </script>
+</body>
+</html>
