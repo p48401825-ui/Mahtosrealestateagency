@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Dashboard | Mahto's Real Estate</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html" class="logo">Mahto<span>'s</span> Real Estate</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="properties.html">Properties</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <button class="nav-toggle">☰</button>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div class="panel">
+        <aside class="panel-side">
+          <a href="#" class="active" data-tab="enquiries">📩 My Enquiries</a>
+          <a href="#" data-tab="profile">👤 Profile</a>
+          <a href="#" data-tab="password">🔒 Change Password</a>
+        </aside>
+        <main class="panel-main">
+          <div id="tabEnquiries">
+            <h2 style="margin-bottom:16px">My Enquiries</h2>
+            <div id="enqList" class="empty">Loading...</div>
+          </div>
+
+          <div id="tabProfile" style="display:none">
+            <h2 style="margin-bottom:16px">Profile</h2>
+            <div id="profileAlert"></div>
+            <form id="profileForm">
+              <div class="field"><label>Name</label><input name="name" required></div>
+              <div class="field"><label>Email (cannot change)</label><input name="email" disabled></div>
+              <div class="field"><label>Phone</label><input name="phone"></div>
+              <button class="btn small" type="submit">Save Profile</button>
+            </form>
+          </div>
+
+          <div id="tabPassword" style="display:none">
+            <h2 style="margin-bottom:16px">Change Password</h2>
+            <div id="passAlert"></div>
+            <form id="passForm">
+              <div class="field"><label>Current Password</label><input name="current" type="password" required></div>
+              <div class="field"><label>New Password</label><input name="next" type="password" minlength="6" required></div>
+              <button class="btn small" type="submit">Update Password</button>
+            </form>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/app.js"></script>
+  <script>
+    const me = App.getCurrentUser();
+    if (!me || !App.getToken()) { location.href = 'login.html'; }
+
+    // tabs
+    document.querySelectorAll('.panel-side a').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelectorAll('.panel-side a').forEach(x => x.classList.remove('active'));
+        a.classList.add('active');
+        const tab = a.dataset.tab;
+        document.getElementById('tabEnquiries').style.display = tab === 'enquiries' ? '' : 'none';
+        document.getElementById('tabProfile').style.display = tab === 'profile' ? '' : 'none';
+        document.getElementById('tabPassword').style.display = tab === 'password' ? '' : 'none';
+        if (tab === 'profile') fillProfile();
+      });
+    });
+
+    function fillProfile() {
+      const f = document.getElementById('profileForm');
+      f.elements.namedItem('name').value = me.name || '';
+      f.elements.namedItem('email').value = me.email || '';
+      f.elements.namedItem('phone').value = me.phone || '';
+    }
+
+    // enquiries
+    App.api('/me/enquiries')
+      .then(d => {
+        const el = document.getElementById('enqList');
+        if (!d.enquiries.length) {
+          el.className = 'empty';
+          el.textContent = 'You have no enquiries yet. Browse properties and send one!';
+          return;
+        }
+        el.className = '';
+        el.innerHTML = `<table>
+          <thead><tr><th>Property</th><th>Message</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>${d.enquiries.map(e => `
+            <tr>
+              <td>${e.property_title || 'General enquiry'}</td>
+              <td>${e.message}</td>
+              <td><span class="chip ${e.status === 'replied' ? 'rent' : ''}">${e.status}</span></td>
+              <td>${e.created_at}</td>
+            </tr>`).join('')}</tbody></table>`;
+      })
+      .catch(err => document.getElementById('enqList').textContent = err.message);
+
+    // profile
+    document.getElementById('profileForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target));
+      App.api('/me/profile', { method: 'PUT', body: JSON.stringify(body) })
+        .then(d => {
+          App.saveSession(App.getToken(), d.user);
+          location.reload();
+        })
+        .catch(err => App.showAlert(document.getElementById('profileAlert'), err.message, 'error'));
+    });
+
+    document.getElementById('passForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target));
+      App.api('/me/password', { method: 'PUT', body: JSON.stringify(body) })
+        .then(() => {
+          App.showAlert(document.getElementById('passAlert'), 'Password updated successfully.', 'ok');
+          e.target.reset();
+        })
+        .catch(err => App.showAlert(document.getElementById('passAlert'), err.message, 'error'));
+    });
+  </script>
+</body>
+</html>
