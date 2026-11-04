@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Property Details | Mahto's Real Estate</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html" class="logo">Mahto<span>'s</span> Real Estate</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="properties.html">Properties</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Services</a>
+      <a href="contact.html">Contact</a>
+      <a href="blog.html">Blog</a>
+    </div>
+    <button class="nav-toggle">☰</button>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div id="detail" class="empty">Loading property...</div>
+      <div id="enquiryBox"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-bottom"><p>© 2025 Mahto's Real Estate Agency · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="disclaimer.html">Disclaimer</a></p></div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    const id = new URLSearchParams(location.search).get('id');
+    const detail = document.getElementById('detail');
+    App.api('/properties/' + id)
+      .then(d => {
+        const p = d.property;
+        let images = [], features = [];
+        try { images = JSON.parse(p.images || '[]'); } catch (e) {}
+        try { features = JSON.parse(p.features || '[]'); } catch (e) {}
+        const img = images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800';
+        detail.className = '';
+        detail.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:32px;align-items:start" class="maxw">
+            <img src="${img}" alt="${p.title}" style="border-radius:var(--radius);height:320px;object-fit:cover;width:100%;box-shadow:var(--shadow)">
+            <div>
+              <span class="card-badge" style="position:static;display:inline-block;margin-bottom:12px">${p.status === 'rent' ? 'For Rent' : 'For Sale'}</span>
+              <h1 style="font-size:1.8rem">${p.title}</h1>
+              <p class="compact">📍 ${p.locality}, ${p.city}</p>
+              <div class="card-price" style="font-size:2rem">${App.formatINR(p.price)}${p.status === 'rent' ? '<span style="font-size:1rem;color:var(--muted)">/month</span>' : ''}</div>
+              <div class="card-meta" style="font-size:.95rem;margin:14px 0">
+                ${p.bedrooms ? `<span>${p.bedrooms} BHK</span>` : ''}
+                ${p.bathrooms ? `<span>${p.bathrooms} Bath</span>` : ''}
+                ${p.area ? `<span>${p.area} sqft</span>` : ''}
+                <span>${p.type}</span>
+              </div>
+              <p style="color:var(--muted);margin-top:12px">${p.description}</p>
+              ${features.length ? `<h3 style="margin-top:20px;color:var(--accent)">Highlights</h3><ul style="padding-left:20px;color:var(--muted)">${features.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+            </div>
+          </div>`;
+        document.getElementById('enquiryBox').innerHTML = `
+          <div class="form-card" style="max-width:640px;margin-top:40px">
+            <h2>Enquire About This Property</h2>
+            <div id="alert"></div>
+            <form id="enqForm">
+              <input type="hidden" name="property_id" value="${p.id}">
+              <div class="field"><label>Your Name *</label><input name="name" required></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="field"><label>Email *</label><input name="email" type="email" required></div>
+                <div class="field"><label>Phone *</label><input name="phone" type="tel" required></div>
+              </div>
+              <div class="field"><label>Message *</label><textarea name="message" rows="4" required placeholder="I am interested in this property..."></textarea></div>
+              <button class="btn" type="submit" style="width:100%">Send Enquiry</button>
+            </form>
+          </div>`;
+        const alertBox = document.getElementById('alert');
+        document.getElementById('enqForm').addEventListener('submit', e => {
+          e.preventDefault();
+          const body = Object.fromEntries(new FormData(e.target));
+          App.api('/enquiries', { method: 'POST', body: JSON.stringify(body) })
+            .then(() => {
+              App.showAlert(alertBox, 'Thank you! Our team will contact you soon.', 'ok');
+              e.target.reset();
+            })
+            .catch(err => App.showAlert(alertBox, err.message, 'error'));
+        });
+      })
+      .catch(err => detail.innerHTML = '<div class="empty">Property not found or server down.<br>' + err.message + '</div>');
+  </script>
+</body>
+</html>
