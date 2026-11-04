@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Properties | Mahto's Real Estate</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html" class="logo">Mahto<span>'s</span> Real Estate</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="properties.html" class="active">Properties</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Services</a>
+      <a href="contact.html">Contact</a>
+      <a href="blog.html">Blog</a>
+    </div>
+    <button class="nav-toggle">☰</button>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <h2>All Properties</h2>
+        <p>Filter by city, type, budget and more</p>
+      </div>
+
+      <form id="filters" class="form-card" style="max-width:900px;margin-bottom:32px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+          <div class="field"><label>Keyword</label><input name="q" placeholder="Search..."></div>
+          <div class="field"><label>City</label><input name="city" placeholder="City"></div>
+          <div class="field"><label>Type</label>
+            <select name="type"><option value="">Any</option><option>Residential</option><option>Commercial</option><option>Plot</option></select>
+          </div>
+          <div class="field"><label>Status</label>
+            <select name="status"><option value="">Any</option><option value="sale">Sale</option><option value="rent">Rent</option></select>
+          </div>
+          <div class="field"><label>Min Beds</label><input name="bedrooms" type="number" min="1" placeholder="BHK"></div>
+          <div class="field"><label>Min Price</label><input name="minPrice" type="number" placeholder="₹"></div>
+          <div class="field"><label>Max Price</label><input name="maxPrice" type="number" placeholder="₹"></div>
+          <div style="display:flex;align-items:flex-end;gap:10px">
+            <button class="btn small" type="submit">Apply</button>
+            <button class="btn small ghost" type="button" id="reset">Reset</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="grid grid-3" id="list"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <div><h4>Mahto's Real Estate</h4><p>Trusted property services in Udhampur & Jammu.</p></div>
+      <div><h4>Legal</h4>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms</a>
+        <a href="refund.html">Refund Policy</a>
+        <a href="disclaimer.html">Disclaimer</a>
+      </div>
+      <div><h4>Contact</h4><p>+91 98765 43210</p><p>info@mahtos.com</p></div>
+    </div>
+    <div class="footer-bottom"><p>© 2025 Mahto's Real Estate Agency</p></div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    const list = document.getElementById('list');
+    function load() {
+      const q = new URLSearchParams(new FormData(document.getElementById('filters')));
+      App.api('/properties?' + q.toString())
+        .then(d => {
+          if (!d.properties.length) {
+            list.innerHTML = '<div class="empty">No properties match your filters.</div>';
+            return;
+          }
+          list.innerHTML = d.properties.map(App.propertyCard).join('');
+        })
+        .catch(err => list.innerHTML = '<div class="empty">' + err.message + '</div>');
+    }
+    // prefill from URL
+    (function () {
+      const p = new URLSearchParams(location.search);
+      const f = document.getElementById('filters');
+      for (const [k, v] of p) {
+        const el = f.elements.namedItem(k);
+        if (el) el.value = v;
+      }
+    })();
+    document.getElementById('filters').addEventListener('submit', e => { e.preventDefault(); load(); });
+    document.getElementById('reset').addEventListener('click', () => {
+      document.getElementById('filters').reset();
+      history.replaceState(null, '', 'properties.html');
+      load();
+    });
+    load();
+  </script>
+</body>
+</html>
