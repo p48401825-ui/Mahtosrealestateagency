@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog | Mahto's Real Estate</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="index.html" class="logo">Mahto<span>'s</span> Real Estate</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="properties.html">Properties</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Services</a>
+      <a href="contact.html">Contact</a>
+      <a href="blog.html" class="active">Blog</a>
+    </div>
+    <button class="nav-toggle">☰</button>
+  </nav>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><h2>Blog & News</h2><p>Property tips, market updates and J&K real estate news</p></div>
+      <div id="posts" class="grid grid-3"></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-bottom"><p>© 2025 Mahto's Real Estate Agency · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p></div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    App.api('/blog')
+      .then(d => {
+        const el = document.getElementById('posts');
+        if (!d.posts.length) {
+          el.innerHTML = '<div class="empty">No posts published yet.</div>';
+          return;
+        }
+        el.innerHTML = d.posts.map(p => `
+          <div class="card"><div class="card-body">
+            <h3>${p.title}</h3>
+            <p class="compact" style="margin-top:8px">${p.body}</p>
+            <span class="compact">${p.created_at} · ${p.author}</span>
+          </div></div>`).join('');
+      })
+      .catch(err => document.getElementById('posts').innerHTML = '<div class="empty">' + err.message + '</div>');
+  </script>
+</body>
+</html>
